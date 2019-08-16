@@ -1,0 +1,8 @@
+---
+- name: install minio helm chart
+  include_role:
+    name: nagonzalez.helm
+    tasks_from: charts
+  vars:
+    helm_charts:
+      - "{{ minio_helm_chart }}"

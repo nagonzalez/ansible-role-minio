@@ -1,0 +1,92 @@
+---
+dependency:
+  name: galaxy
+  options:
+    role-file: molecule/default/requirements.yml
+driver:
+  name: vagrant
+  provider:
+    name: virtualbox
+lint:
+  name: yamllint
+platforms:
+  - name: rancher
+    box: centos/7
+    cpus: 4
+    memory: 4096
+    interfaces:
+      - auto_config: true
+        ip: 172.28.128.3
+        network_name: private_network
+        type: static
+provisioner:
+  name: ansible
+  log: true
+  inventory:
+    host_vars:
+      rancher:
+        # RKE VARS
+        rke_nodes:
+          - address: 172.28.128.3
+            user: vagrant
+            role: [controlplane, etcd, worker]
+
+        # RANCHER VARS
+        rancher_helm_chart:
+          name: rancher
+          version: "{{ rancher_version }}"
+          release: rancher
+          namespace: cattle-system
+          source:
+            type: repo
+            location: https://releases.rancher.com/server-charts/stable
+          state: present
+          values:
+            hostname: rancher.172.28.128.3.xip.io
+
+        # MINIO VARS
+        minio_helm_chart:
+          name: minio
+          version: 2.5.11
+          release: minio-prod
+          namespace: minio
+          source:
+            type: repo
+            location: https://kubernetes-charts.storage.googleapis.com
+          state: present
+          values:
+            accessKey: "minio"
+            secretKey: "password"
+
+            ingress:
+              enabled: true
+              annotations: {}
+              path: /
+              hosts:
+                - minio.172.28.128.3.xip.io
+              tls:
+                - secretName: minio-prod-tls
+                  hosts:
+                    - minio.172.28.128.3.xip.io
+
+            ## Create a bucket after minio install
+            defaultBucket:
+              enabled: true
+              ## If enabled, must be a string with length > 0
+              name: bucket
+              ## Can be one of none|download|upload|public
+              policy: none
+              ## Purge if bucket exists already
+              purge: false
+
+
+  lint:
+    name: ansible-lint
+    options:
+      x: [
+        "204"  # Lines should be no longer than 160 chars
+      ]
+verifier:
+  name: testinfra
+  lint:
+    name: flake8

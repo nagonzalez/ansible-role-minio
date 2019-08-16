@@ -1,0 +1,9 @@
+---
+# tasks file for ansible-role-minio
+
+# configue tiller connectivity if required
+- include: tiller.yml
+  when: l_helm_host is not defined or l_helm_port is not defined
+
+# install minio helm chart
+- include: minio.yml
